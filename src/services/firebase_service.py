@@ -1,5 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1 import FieldFilter
+from google.cloud.firestore_v1 import FieldFilter
 from telegram import User as TelegramUser
 import os
 from typing import Optional, List
@@ -98,7 +100,11 @@ class FirebaseService:
         subscriptions_ref = self.db.collection('subscriptions')
         deactivated_users = []
 
-        for user in users_ref.where('is_vip', '==', True).stream():
+        # Sintaxe atualizada com parâmetro filter
+        vip_users = users_ref.where(
+            filter=FieldFilter('is_vip', '==', True)).stream()
+
+        for user in vip_users:
             user_id = user.id
             user_data = user.to_dict()
 
@@ -106,9 +112,10 @@ class FirebaseService:
                 logger.info(
                     f"⏰ VIP expirado para o usuário {user_id}. Verificando novas assinaturas ativas...")
 
+                # Sintaxe atualizada com parâmetro filter
                 active_subs = list(subscriptions_ref
-                                   .where('user_id', '==', user_id)
-                                   .where('expires_at', '>', datetime.now(timezone.utc))
+                                   .where(filter=FieldFilter('user_id', '==', user_id))
+                                   .where(filter=FieldFilter('expires_at', '>', datetime.now(timezone.utc)))
                                    .limit(1)
                                    .stream())
 
@@ -133,11 +140,12 @@ class FirebaseService:
         logger.info(
             f"📆 Buscando assinaturas que expiram entre {start_of_day} e {end_of_day}...")
 
+        # Sintaxe atualizada com parâmetro filter
         subscriptions = (
             self.db.collection('subscriptions')
-            .where('status', '==', 'active')
-            .where('expires_at', '>=', start_of_day)
-            .where('expires_at', '<', end_of_day)
+            .where(filter=FieldFilter('status', '==', 'active'))
+            .where(filter=FieldFilter('expires_at', '>=', start_of_day))
+            .where(filter=FieldFilter('expires_at', '<', end_of_day))
             .stream()
         )
 
