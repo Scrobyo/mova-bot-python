@@ -68,12 +68,11 @@ class FirebaseService:
         }
 
         # Atualiza o status do usuário para VIP
-        await self.db.collection('users').document(str(user_id)).update({
+        self.db.collection('users').document(str(user_id)).update({
             'is_vip': True,
             'vip_expires': expires_at
         })
 
-        # Cria o documento na coleção de assinaturas
         sub_ref = self.db.collection('subscriptions').document()
         sub_ref.set(subscription_data)
 

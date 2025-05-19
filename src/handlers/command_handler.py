@@ -59,11 +59,14 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user: dict):
     """Função compartilhada para o fluxo de boas-vindas"""
+    # Formatando a mensagem com o nome do usuário
     start_msgs = messages.get('start', name=user['first_name'])
 
     # 1. Mensagem de boas-vindas
+    # Aqui você faz a substituição do {name}
+    welcome_msg = start_msgs['welcome'].format(name=user['first_name'])
     await update.message.reply_text(
-        start_msgs['welcome'],
+        welcome_msg,  # Envia a mensagem formatada
         parse_mode='Markdown'
     )
     await asyncio.sleep(1.5)
@@ -159,10 +162,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ O pagamento PIX não foi encontrado. Por favor, tente novamente.")
             return
 
-        await asyncio.sleep(5)
-
-        # Simula verificação do pagamento (substitua pela lógica real)
-        payment_verified, response = await _confirm_payment(
+        # Verificação REAL do pagamento (substitui a simulação)
+        payment_verified, response, vip_buttons = await _confirm_payment(
             user_id=user_id,
             plan=plan,
             payment_id=payment_id,
@@ -175,15 +176,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }.get(plan)
         )
 
-        # Mesmo em caso de erro ou pagamento pendente, mantemos os botões de "Já Paguei" e "Suporte"
-        vip_keyboard = buttons.get('pix_confirmation_error', plan=plan)
-
-        # Atualiza a mensagem com o resultado
-        await query.edit_message_text(
-            text=response,
-            parse_mode='Markdown',
-            reply_markup=vip_keyboard
-        )
+        if payment_verified:
+            # Pagamento aprovado - mostrar mensagem de sucesso
+            await query.edit_message_text(
+                text=response,
+                parse_mode='Markdown',
+                reply_markup=vip_buttons
+            )
+        else:
+            # Pagamento pendente ou falhou - manter botões de ação
+            vip_keyboard = buttons.get('pix_confirmation_error', plan=plan)
+            await query.edit_message_text(
+                text=response,
+                parse_mode='Markdown',
+                reply_markup=vip_keyboard
+            )
 
 
 async def _process_pix_payment(query, context, plan):
@@ -249,8 +256,10 @@ async def _process_credit_card(query, plan):
 async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_method: str, amount: float):
     """Confirma o pagamento e ativa a assinatura"""
     try:
-        # Verifica o status do pagamento
+        print(f"Verificando pagamento {payment_id}...")
+
         payment_status = await mercado_pago.verify_payment(payment_id)
+        print(f"Status do pagamento {payment_id}: {payment_status}")
 
         if payment_status != "approved":
             if payment_status == "pending":
@@ -258,7 +267,7 @@ async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_met
             else:
                 return False, messages.get('payment_failed')
 
-        # Cria a assinatura no Firebase
+        print("Criando assinatura no Firebase...")
         subscription = await firebase.create_subscription(
             user_id=user_id,
             payment_data={
@@ -268,6 +277,11 @@ async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_met
                 'amount': amount
             }
         )
+        print(f"Assinatura criada: {subscription}")
+
+        if not subscription or 'expires_at' not in subscription:
+            print("Erro: Assinatura não criada corretamente")
+            return False, messages.get('payment_failed')
 
         plan_names = {
             '1month': "1 MÊS",
@@ -283,14 +297,14 @@ async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_met
                 expiration_date=subscription['expires_at'].strftime(
                     "%d/%m/%Y"),
                 plan_name=plan_names.get(plan, plan)
-            ) +
-            "\n\n" +
-            success_msgs['instructions']
+            )
         )
 
-        return True, full_message
+        # Retorna a mensagem com o botão de acessar o grupo VIP
+        return True, full_message, buttons.get('vip_success')
 
     except Exception as e:
+        print(f"Erro em _confirm_payment: {str(e)}")
         return False, messages.get('payment_failed')
 
 
