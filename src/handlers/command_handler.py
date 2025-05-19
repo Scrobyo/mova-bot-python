@@ -90,7 +90,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_generic_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await _register_user_if_needed(update)
     await update.message.reply_text(
-        messages.get('generic_response', name=user['first_name']),
+        messages.get('start', name=user['first_name']),
         parse_mode='Markdown'
     )
 
