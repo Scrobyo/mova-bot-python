@@ -95,3 +95,19 @@ class MercadoPagoService:
 
         except Exception as e:
             raise Exception(f"Falha ao gerar link: {str(e)}")
+
+    async def verify_payment(self, payment_id: str) -> bool:
+        """
+        Verifica se o pagamento foi aprovado no Mercado Pago.
+        """
+        try:
+            payment = self.sdk.payment().get(payment_id)
+            status = payment["response"].get("status")
+
+            # Opcional: printar ou logar o status
+            print(f"Status do pagamento {payment_id}: {status}")
+
+            return status == "approved"
+        except Exception as e:
+            print(f"Erro ao verificar pagamento: {e}")
+            return False

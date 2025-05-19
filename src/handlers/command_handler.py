@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, InputFile
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
@@ -136,7 +136,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         method, plan = data.split('_')[1], data.split('_')[2]
 
         if method == 'pix':
-            await _process_pix_payment(query, plan)
+            await _process_pix_payment(query, context, plan)
         elif method == 'cc':
             await _process_credit_card(query, plan)
 
@@ -144,8 +144,49 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == 'back_to_plans':
         await _show_vip_plans(update, context)
 
+    elif data.startswith('paid_pix_'):
+        plan = data.split('_')[2]
+        user_id = query.from_user.id
 
-async def _process_pix_payment(query, plan):
+        # Mostra mensagem de processamento
+        await query.edit_message_text(
+            text=messages.get('payment_pending'),
+            parse_mode='Markdown'
+        )
+
+        payment_id = context.user_data.get("pix_payment_id")
+        if not payment_id:
+            await query.edit_message_text("❌ O pagamento PIX não foi encontrado. Por favor, tente novamente.")
+            return
+
+        await asyncio.sleep(5)
+
+        # Simula verificação do pagamento (substitua pela lógica real)
+        payment_verified, response = await _confirm_payment(
+            user_id=user_id,
+            plan=plan,
+            payment_id=payment_id,
+            payment_method='pix',
+            amount={
+                '1month': 19.90,
+                '3months': 29.90,
+                '6months': 49.90,
+                'lifetime': 79.90
+            }.get(plan)
+        )
+
+        # Mesmo em caso de erro ou pagamento pendente, mantemos os botões de "Já Paguei" e "Suporte"
+        vip_keyboard = buttons.get('pix_confirmation_error', plan=plan)
+
+        # Atualiza a mensagem com o resultado
+        await query.edit_message_text(
+            text=response,
+            parse_mode='Markdown',
+            reply_markup=vip_keyboard
+        )
+
+
+async def _process_pix_payment(query, context, plan):
     """Processa pagamento via PIX"""
     plan_prices = {
         '1month': 19.90,
@@ -161,6 +202,8 @@ async def _process_pix_payment(query, plan):
             amount=amount,
             description=f"Plano VIP: {plan}"
         )
+
+        context.user_data["pix_payment_id"] = pix_data["payment_id"]
 
         await query.edit_message_text(
             text=messages.get('pix_payment', amount=amount,
@@ -201,6 +244,54 @@ async def _process_credit_card(query, plan):
         await query.edit_message_text(
             text=messages.get('cc_error', error=str(e))
         )
+
+
+async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_method: str, amount: float):
+    """Confirma o pagamento e ativa a assinatura"""
+    try:
+        # Verifica o status do pagamento
+        payment_status = await mercado_pago.verify_payment(payment_id)
+
+        if payment_status != "approved":
+            if payment_status == "pending":
+                return False, messages.get('payment_pending')
+            else:
+                return False, messages.get('payment_failed')
+
+        # Cria a assinatura no Firebase
+        subscription = await firebase.create_subscription(
+            user_id=user_id,
+            payment_data={
+                'plan': plan,
+                'payment_id': payment_id,
+                'method': payment_method,
+                'amount': amount
+            }
+        )
+
+        plan_names = {
+            '1month': "1 MÊS",
+            '3months': "3 MESES",
+            '6months': "6 MESES",
+            'lifetime': "VITALÍCIO"
+        }
+
+        success_msgs = messages.get('payment_success')
+        full_message = (
+            success_msgs['title'] +
+            success_msgs['message'].format(
+                expiration_date=subscription['expires_at'].strftime(
+                    "%d/%m/%Y"),
+                plan_name=plan_names.get(plan, plan)
+            ) +
+            "\n\n" +
+            success_msgs['instructions']
+        )
+
+        return True, full_message
+
+    except Exception as e:
+        return False, messages.get('payment_failed')
 
 
 def setup_handlers(app):

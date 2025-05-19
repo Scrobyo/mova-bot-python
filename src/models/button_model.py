@@ -42,12 +42,28 @@ class ButtonModel:
                         "↩️ VOLTAR", callback_data="plan_{plan}")]
                 ]
             },
+            'pix_confirmation_error': {
+                'layout': [
+                    [InlineKeyboardButton(
+                        "✅ JÁ PAGUEI", callback_data="paid_pix_{plan}")],
+                    [InlineKeyboardButton(
+                        "📞 SUPORTE", url="https://t.me/Scrobyo")]
+                ]
+            },
             'credit_card_payment': {
                 'layout': [
                     [InlineKeyboardButton(
                         "🔒 PAGAR AGORA", url="{payment_url}")],
                     [InlineKeyboardButton(
                         "↩️ VOLTAR", callback_data="plan_{plan}")]
+                ]
+            },
+            'vip_success': {
+                'layout': [
+                    [InlineKeyboardButton("👉 ACESSAR GRUPO VIP",
+                                          url="https://t.me/seugrupovip")],
+                    [InlineKeyboardButton(
+                        "🛠 SUPORTE", url="https://t.me/seu_suporte")]
                 ]
             }
         }

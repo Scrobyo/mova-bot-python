@@ -37,8 +37,35 @@ class MessageModel:
             "📲 *Código PIX (copie e cole no seu banco):*\n"
             "`{qr_code}`\n\n",
 
+            'payment_success': {
+                'title': "🎉 *PAGAMENTO CONFIRMADO!* 🎉\n\n",
+                'message': "Seu pagamento foi aprovado e seu acesso VIP foi ativado!\n\n"
+                "📅 *Validade:* {expiration_date}\n"
+                "💰 *Plano:* {plan_name}\n\n"
+                "Agora você tem acesso completo ao grupo VIP!",
+                'instructions': "👉 Clique no botão abaixo para acessar o grupo VIP:"
+            },
+
             'credit_card_payment': "🚀 *PAGAMENTO POR CARTÃO* 🚀\n\n"
             "Clique no botão abaixo para pagar com segurança:",
+
+            'payment_success': {
+                'title': "🎉 *PAGAMENTO CONFIRMADO!* 🎉\n\n",
+                'message': "Seu pagamento foi aprovado e seu acesso VIP foi ativado!\n\n"
+                "📅 *Validade:* {expiration_date}\n"
+                "💰 *Plano:* {plan_name}\n\n"
+                "Agora você tem acesso completo ao grupo VIP!",
+                'instructions': "👉 Clique no botão abaixo para acessar o grupo VIP:"
+            },
+
+            'payment_pending': "🕒 *PAGAMENTO EM PROCESSAMENTO*\n\n"
+            "Estamos verificando seu pagamento. Você receberá uma "
+            "mensagem assim que for confirmado.\n\n"
+            "⏳ Por favor, aguarde...",
+
+            'payment_failed': "❌ *PAGAMENTO NÃO CONFIRMADO*\n\n"
+            "Não foi possível confirmar seu pagamento. Por favor, tente novamente.\n\n"
+            "Se o problema persistir, entre em contato com o suporte.",
 
             # Erros
             'pix_error': "❌ Erro ao processar PIX: {error}",
