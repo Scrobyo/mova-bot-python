@@ -1,7 +1,7 @@
 from datetime import datetime
 import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, InputFile
-from telegram.ext import ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+from telegram.ext import Application, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 
 from models.user_model import UserData
 from models.message_model import MessageModel
@@ -306,6 +306,27 @@ async def _confirm_payment(user_id: int, plan: str, payment_id: str, payment_met
     except Exception as e:
         print(f"Erro em _confirm_payment: {str(e)}")
         return False, messages.get('payment_failed')
+
+    async def check_expired_subscriptions(context: ContextTypes.DEFAULT_TYPE):
+        """Verifica e desativa assinaturas expiradas"""
+        try:
+            logger.info("Executando verificação periódica de assinaturas...")
+            deactivated_users = await firebase.check_and_update_vip_status()
+            if deactivated_users:
+                logger.info(f"Usuários desativados: {deactivated_users}")
+        except Exception as e:
+            logger.error(f"Erro na verificação de assinaturas: {str(e)}")
+
+    def setup_periodic_tasks(app: Application):
+        """Configura tarefas periódicas"""
+        # Verifica a cada 2 minutos (120 segundos)
+        job_queue = app.job_queue
+        if job_queue:
+            job_queue.run_repeating(
+                check_expired_subscriptions,
+                interval=120,  # 2 minutos em segundos
+                first=10  # Começa após 10 segundos da inicialização
+            )
 
 
 def setup_handlers(app):

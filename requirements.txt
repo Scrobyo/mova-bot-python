@@ -2,5 +2,6 @@ python-telegram-bot==20.3
 python-dotenv==1.0.0
 firebase-admin
 mercadopago
-apscheduler>=3.9.0
-pytz>=2023.3
+apscheduler
+pytz
+

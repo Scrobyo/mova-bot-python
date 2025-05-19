@@ -59,6 +59,10 @@ class MessageModel:
             "Não foi possível confirmar seu pagamento. Por favor, tente novamente.\n\n"
             "Se o problema persistir, entre em contato com o suporte.",
 
+            'subscription_expired': "⚠️ *Sua assinatura VIP expirou.*\n\n"
+            "Para continuar acessando o conteúdo exclusivo, por favor, renove seu plano VIP.\n\n"
+            "Clique no botão abaixo para escolher um novo plano 👇",
+
             # Erros
             'pix_error': "❌ Erro ao processar PIX: {error}",
             'cc_error': "❌ Erro ao gerar link de pagamento: {error}",
