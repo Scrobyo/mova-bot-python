@@ -8,10 +8,12 @@ from models.message_model import MessageModel
 from models.button_model import ButtonModel
 
 from services.firebase_service import FirebaseService
+from services.mercadopago_service import MercadoPagoService
 
-firebase = FirebaseService()
 messages = MessageModel()
 buttons = ButtonModel()
+firebase = FirebaseService()
+mercado_pago = MercadoPagoService()
 
 
 async def _register_user_if_needed(update: Update) -> UserData:
@@ -143,40 +145,75 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def process_pix_payment(query, plan):
-    """Lógica específica para pagamento via PIX"""
-    values = {
-        '1month': "19.90",
-        '3months': "29.90",
-        '6months': "49.90",
-        'lifetime': "79.90"
+    """Lógica para PIX sem QR Code (apenas código textual)"""
+    plan_prices = {
+        '1month': 19.90,
+        '3months': 29.90,
+        '6months': 49.90,
+        'lifetime': 79.90,
     }
+    amount = plan_prices.get(plan)
 
-    await query.edit_message_text(
-        text=f"🔹 *PAGAMENTO VIA PIX* 🔹\n\n"
-        f"Valor: R$ {values.get(plan)}\n"
-        f"Chave: 123.456.789-00\n\n"
-        f"Envie o comprovante para @suporte",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "✅ JÁ PAGUEI", callback_data=f"paid_pix_{plan}")],
-            [InlineKeyboardButton("↩️ VOLTAR", callback_data=f"plan_{plan}")]
-        ])
-    )
+    try:
+        pix_data = await mercado_pago.create_pix_payment(
+            user_id=query.from_user.id,
+            amount=amount,
+            description=f"Plano VIP: {plan}"
+        )
+
+        await query.edit_message_text(
+            text=f"🔹 *PAGAMENTO VIA PIX* 🔹\n\n"
+            f"💰 *Valor:* R$ {amount:.2f}\n"
+            f"⏳ *Expira em:* 24 horas\n\n"
+            f"📲 *Código PIX (copie e cole no seu banco):*\n"
+            f"`{pix_data['qr_code']}`\n\n",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "✅ JÁ PAGUEI", callback_data=f"paid_pix_{plan}")],
+                [InlineKeyboardButton(
+                    "↩️ VOLTAR", callback_data=f"plan_{plan}")]
+            ])
+        )
+
+    except Exception as e:
+        await query.edit_message_text(
+            text=f"❌ Erro ao processar PIX: {str(e)}"
+        )
 
 
 async def process_credit_card(query, plan):
-    """Lógica específica para cartão de crédito"""
-    await query.edit_message_text(
-        text=f"🚀 *PAGAMENTO POR CARTÃO* 🚀\n\n"
-        f"Clique no botão abaixo para pagar com segurança:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔒 PAGAR COM CARTÃO",
-                                  url="https://seusite.com/checkout")],
-            [InlineKeyboardButton("↩️ VOLTAR", callback_data=f"plan_{plan}")]
-        ])
-    )
+    """Lógica atualizada para cartão de crédito via Mercado Pago"""
+    plan_prices = {
+        '1month': 19.90,
+        '3months': 29.90,
+        '6months': 49.90,
+        'lifetime': 79.90,
+    }
+    amount = plan_prices.get(plan)
+
+    try:
+        payment_url = await mercado_pago.create_credit_card_payment_link(
+            user_id=query.from_user.id,
+            amount=amount,
+            description=f"Plano VIP: {plan}"
+        )
+
+        await query.edit_message_text(
+            text=f"🚀 *PAGAMENTO POR CARTÃO* 🚀\n\n"
+            f"Clique no botão abaixo para pagar com segurança:",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔒 PAGAR AGORA", url=payment_url)],
+                [InlineKeyboardButton(
+                    "↩️ VOLTAR", callback_data=f"plan_{plan}")]
+            ])
+        )
+
+    except Exception as e:
+        await query.edit_message_text(
+            text=f"❌ Erro ao gerar link: {str(e)}"
+        )
 
 
 def setup_handlers(app):

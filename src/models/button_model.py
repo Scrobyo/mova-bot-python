@@ -14,7 +14,7 @@ class ButtonModel:
     def _init_buttons(self):
         self._buttons = {
             'vip_plans': {
-                'message': "💰 *ESCOLHA SEU PLANO VIP ABAIXO* 💰",
+                'message': "*ESCOLHA SEU PLANO VIP ABAIXO* 👇",
                 'layout': [
                     [InlineKeyboardButton(
                         "1️⃣ 1 MÊS - R$19.90", callback_data="plan_1month")],
@@ -27,10 +27,10 @@ class ButtonModel:
                 ]
             },
             'payment_methods': {
-                'message': "💳 *SELECIONE A FORMA DE PAGAMENTO*",
+                'message': "💰 *SELECIONE A FORMA DE PAGAMENTO*",
                 'layout': [
                     [InlineKeyboardButton(
-                        "💵 PIX (5% OFF)", callback_data="payment_pix_{plan}")],
+                        "💵 PIX", callback_data="payment_pix_{plan}")],
                     [InlineKeyboardButton(
                         "💳 CARTÃO DE CRÉDITO", callback_data="payment_cc_{plan}")],
                     [InlineKeyboardButton(
