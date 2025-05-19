@@ -99,36 +99,92 @@ class FirebaseService:
         users_ref = self.db.collection('users')
         subscriptions_ref = self.db.collection('subscriptions')
         deactivated_users = []
+        now = datetime.now(timezone.utc)
+        updated_subscriptions = 0
 
-        # Sintaxe atualizada com parâmetro filter
-        vip_users = users_ref.where(
-            filter=FieldFilter('is_vip', '==', True)).stream()
+        try:
+            # 1. Atualizar assinaturas expiradas
+            expired_subs_query = subscriptions_ref.where(
+                filter=FieldFilter('status', '==', 'active')
+            ).where(
+                filter=FieldFilter('expires_at', '<=', now)
+            )
 
-        for user in vip_users:
-            user_id = user.id
-            user_data = user.to_dict()
+            expired_subs = expired_subs_query.stream()
+            batch = self.db.batch()
+            batch_count = 0
 
-            if user_data.get('vip_expires') and user_data['vip_expires'] <= datetime.now(timezone.utc):
+            for sub in expired_subs:
+                sub_data = sub.to_dict()
                 logger.info(
-                    f"⏰ VIP expirado para o usuário {user_id}. Verificando novas assinaturas ativas...")
+                    f"🔄 Marcando assinatura {sub.id} como expirada (User: {sub_data.get('user_id')}, Expired at: {sub_data.get('expires_at')})")
 
-                # Sintaxe atualizada com parâmetro filter
-                active_subs = list(subscriptions_ref
-                                   .where(filter=FieldFilter('user_id', '==', user_id))
-                                   .where(filter=FieldFilter('expires_at', '>', datetime.now(timezone.utc)))
-                                   .limit(1)
-                                   .stream())
+                batch.update(sub.reference, {
+                    'status': 'expired',
+                    'last_updated': now
+                })
+                batch_count += 1
+                updated_subscriptions += 1
 
-                if not active_subs:
-                    await users_ref.document(user_id).update({
-                        'is_vip': False,
-                        'vip_expires': None
-                    })
-                    logger.info(f"🔻 Usuário {user_id} removido do VIP.")
-                    deactivated_users.append(user_id)
+                if batch_count >= 400:
+                    batch.commit()
+                    logger.info(
+                        f"✅ Lote de {batch_count} assinaturas atualizadas")
+                    batch = self.db.batch()
+                    batch_count = 0
+
+            if batch_count > 0:
+                batch.commit()
+                logger.info(
+                    f"✅ Lote final de {batch_count} assinaturas atualizadas")
+
+            logger.info(
+                f"🔄 Total de assinaturas marcadas como expiradas: {updated_subscriptions}")
+
+            # 2. Verificar usuários VIP
+            vip_users_query = users_ref.where(
+                filter=FieldFilter('is_vip', '==', True)
+            )
+            vip_users = vip_users_query.stream()
+
+            for user in vip_users:
+                user_id = user.id
+                user_data = user.to_dict()
+                vip_expires = user_data.get('vip_expires')
+
+                if vip_expires and vip_expires <= now:
+                    logger.info(
+                        f"⏳ Verificando usuário VIP expirado: {user_id} (Expirou em: {vip_expires})")
+
+                    active_subs_query = subscriptions_ref.where(
+                        filter=FieldFilter('user_id', '==', user_id)
+                    ).where(
+                        filter=FieldFilter('status', '==', 'active')
+                    ).where(
+                        filter=FieldFilter('expires_at', '>', now)
+                    ).limit(1)
+
+                    active_subs = list(active_subs_query.stream())
+
+                    if not active_subs:
+                        logger.info(
+                            f"🔻 Removendo status VIP do usuário {user_id} (Sem assinaturas ativas)")
+                        users_ref.document(user_id).update({
+                            'is_vip': False,
+                            'vip_expires': None
+                        })
+                        deactivated_users.append(user_id)
+                    else:
+                        logger.info(
+                            f"✅ Usuário {user_id} mantém VIP (Possui assinatura ativa até {active_subs[0].get('expires_at')})")
+
+        except Exception as e:
+            logger.error(
+                f"❌ Erro durante verificação: {str(e)}", exc_info=True)
+            raise
 
         logger.info(
-            f"✅ Verificação concluída. {len(deactivated_users)} usuários desativados.")
+            f"🏁 Verificação concluída. Usuários desativados: {len(deactivated_users)}")
         return deactivated_users
 
     async def get_expiring_subscriptions(self, days_before: int = 3) -> List[dict]:
@@ -140,9 +196,8 @@ class FirebaseService:
         logger.info(
             f"📆 Buscando assinaturas que expiram entre {start_of_day} e {end_of_day}...")
 
-        # Sintaxe atualizada com parâmetro filter
         subscriptions = (
-            self.db.collection('subscriptions')
+            self.db.collection('subscriptions')  # Corrigido o nome da coleção
             .where(filter=FieldFilter('status', '==', 'active'))
             .where(filter=FieldFilter('expires_at', '>=', start_of_day))
             .where(filter=FieldFilter('expires_at', '<', end_of_day))
