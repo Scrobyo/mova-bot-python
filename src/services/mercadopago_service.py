@@ -2,16 +2,19 @@ import os
 import mercadopago
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from utils.logger import setup_logger
+
+logger = setup_logger("mercadopago_service")
 
 
 class MercadoPagoService:
     def __init__(self):
-        # Configura as credenciais do Mercado Pago (usando variáveis de ambiente)
         access_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
         if not access_token:
-            raise ValueError("🚨 MERCADOPAGO_ACCESS_TOKEN não está definido!")
+            raise ValueError("🛑 MERCADOPAGO_ACCESS_TOKEN não está definido!")
 
         self.sdk = mercadopago.SDK(access_token)
+        logger.info("🔌 Mercado Pago SDK conectado com sucesso ⚡")
 
     async def create_pix_payment(
         self,
@@ -19,10 +22,7 @@ class MercadoPagoService:
         amount: float,
         description: str = "Assinatura VIP"
     ) -> Dict:
-        """
-        Cria um pagamento via PIX com data de expiração formatada corretamente.
-        """
-        expiration_hours = 24  # PIX expira em 24 horas
+        expiration_hours = 24
         expiration_date = (datetime.now() + timedelta(hours=expiration_hours)
                            ).strftime("%Y-%m-%dT%H:%M:%S.000-03:00")
 
@@ -35,16 +35,21 @@ class MercadoPagoService:
                 "first_name": "Cliente",
                 "last_name": f"ID: {user_id}",
             },
-            "date_of_expiration": expiration_date,  # Formato corrigido
+            "date_of_expiration": expiration_date,
         }
 
         try:
+            logger.info(
+                f"📲 Gerando pagamento PIX | Usuário: {user_id} | Valor: R${amount:.2f}")
             payment = self.sdk.payment().create(payment_data)
             if payment["status"] != 201:
                 error_msg = payment["response"].get(
                     "message", "Erro desconhecido")
+                logger.error(f"🚫 Erro ao criar PIX: {error_msg}")
                 raise Exception(f"Erro ao criar PIX: {error_msg}")
 
+            logger.info(
+                f"✅ PIX gerado com sucesso | ID do pagamento: {payment['response']['id']}")
             return {
                 "qr_code": payment["response"]["point_of_interaction"]["transaction_data"]["qr_code"],
                 "qr_code_base64": payment["response"]["point_of_interaction"]["transaction_data"]["qr_code_base64"],
@@ -52,8 +57,11 @@ class MercadoPagoService:
                 "expiration_date": expiration_date,
                 "payment_id": payment["response"]["id"],
             }
+
         except Exception as e:
-            raise Exception(f"Falha ao gerar PIX: {str(e)}")
+            logger.error(
+                f"❌ Falha ao gerar PIX | Usuário: {user_id} | Erro: {str(e)}")
+            raise
 
     async def create_credit_card_payment_link(
         self,
@@ -63,9 +71,6 @@ class MercadoPagoService:
         success_url: Optional[str] = None,
         failure_url: Optional[str] = None,
     ) -> str:
-        """
-        Cria um link de checkout para cartão de crédito (sem webhook).
-        """
         preference_data = {
             "items": [
                 {
@@ -75,38 +80,42 @@ class MercadoPagoService:
                 }
             ],
             "payer": {
-                "email": f"user_{user_id}@noemail.com",  # Obrigatório
+                "email": f"user_{user_id}@noemail.com",
             },
-            "auto_return": "approved",  # Redireciona após pagamento
+            "auto_return": "approved",
             "back_urls": {
-                "success": success_url or "https://t.me/seubot",  # URL de fallback
+                "success": success_url or "https://t.me/seubot",
                 "failure": failure_url or "https://t.me/seubot",
             },
-            "notification_url": None,  # Sem webhook
+            "notification_url": None,
         }
 
         try:
+            logger.info(
+                f"💳 Criando link de pagamento (cartão) | Usuário: {user_id} | Valor: R${amount:.2f}")
             preference = self.sdk.preference().create(preference_data)
             if preference["status"] != 201:
-                raise Exception(
-                    f"Erro ao criar link: {preference['response'].get('message')}")
+                error_msg = preference["response"].get(
+                    "message", "Erro desconhecido")
+                logger.error(f"🚫 Erro ao criar link de pagamento: {error_msg}")
+                raise Exception(f"Erro ao criar link: {error_msg}")
 
-            return preference["response"]["init_point"]  # URL de pagamento
+            logger.info(
+                f"🔗 Link de pagamento criado com sucesso | Usuário: {user_id}")
+            return preference["response"]["init_point"]
 
         except Exception as e:
-            raise Exception(f"Falha ao gerar link: {str(e)}")
+            logger.error(
+                f"❌ Erro ao gerar link de cartão | Usuário: {user_id} | Erro: {e}")
+            raise
 
     async def verify_payment(self, payment_id: str) -> str:
-        """
-        Verifica e retorna o status do pagamento no Mercado Pago.
-        """
         try:
+            logger.info(f"🔎 Verificando pagamento | ID: {payment_id}")
             payment = self.sdk.payment().get(payment_id)
             status = payment["response"].get("status")
-
-            print(f"Status do pagamento {payment_id}: {status}")
-
-            return status or "unknown"  # Retorna a string, por exemplo: "approved"
+            logger.info(f"📦 Status do pagamento {payment_id}: {status}")
+            return status or "unknown"
         except Exception as e:
-            print(f"Erro ao verificar pagamento: {e}")
+            logger.error(f"🚨 Erro ao verificar pagamento {payment_id}: {e}")
             return "error"

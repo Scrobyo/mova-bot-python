@@ -1,9 +1,14 @@
 import os
+import asyncio
 from telegram.ext import Application
 from handlers.command_handler import setup_handlers
+from tasks.check_subscriptions import check_subscriptions
+from utils.logger import setup_logger
+
+logger = setup_logger("bot")
 
 
-def start_bot():
+def run_bot():
     token = os.getenv("TELEGRAM_TOKEN")
     if not token:
         raise ValueError("Token não configurado!")
@@ -11,5 +16,13 @@ def start_bot():
     app = Application.builder().token(token).build()
     setup_handlers(app)
 
-    print("🤖 Bot iniciado com sucesso!")
-    app.run_polling()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.create_task(check_subscriptions())
+
+        logger.info("🤖 Bot iniciado com sucesso!")
+        app.run_polling()
+    finally:
+        loop.close()
