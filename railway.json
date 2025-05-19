@@ -4,7 +4,7 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "python main.py & python tasks/scheduled_tasks.py",
+        "startCommand": "cd /app && python main.py & python tasks/scheduled_tasks.py",
         "restartPolicy": {
             "maxRetries": 3
         }
