@@ -79,6 +79,7 @@ class FirebaseService:
         return subscription_data
 
     async def check_and_update_vip_status(self):
+        print("Verificando assinaturas...")
         """
         Verifica todos os usuários VIP e desativa aqueles sem assinaturas ativas.
         Retorna lista de IDs de usuários desativados.

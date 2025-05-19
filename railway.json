@@ -1,12 +1,8 @@
 {
-    "$schema": "https://railway.app/railway.schema.json",
-    "build": {
-        "builder": "NIXPACKS"
-    },
-    "deploy": {
-        "startCommand": "cd /app && python main.py & python tasks/scheduled_tasks.py",
-        "restartPolicy": {
-            "maxRetries": 3
+    "crons": [
+        {
+            "command": "python3 tasks/verify_signatures.py",
+            "schedule": "*/5 * * * *"
         }
-    }
+    ]
 }
