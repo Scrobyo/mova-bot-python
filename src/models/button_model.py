@@ -1,5 +1,4 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from typing import Dict, List, Tuple
 
 
 class ButtonModel:
@@ -14,7 +13,6 @@ class ButtonModel:
     def _init_buttons(self):
         self._buttons = {
             'vip_plans': {
-                'message': "*ESCOLHA SEU PLANO VIP ABAIXO* 👇",
                 'layout': [
                     [InlineKeyboardButton(
                         "1️⃣ 1 MÊS - R$19.90", callback_data="plan_1month")],
@@ -27,37 +25,61 @@ class ButtonModel:
                 ]
             },
             'payment_methods': {
-                'message': "💰 *SELECIONE A FORMA DE PAGAMENTO*",
                 'layout': [
                     [InlineKeyboardButton(
                         "💵 PIX", callback_data="payment_pix_{plan}")],
                     [InlineKeyboardButton(
-                        "💳 CARTÃO DE CRÉDITO", callback_data="payment_cc_{plan}")],
+                        "💳 CARTÃO", callback_data="payment_cc_{plan}")],
                     [InlineKeyboardButton(
                         "↩️ VOLTAR", callback_data="back_to_plans")]
+                ]
+            },
+            'pix_confirmation': {
+                'layout': [
+                    [InlineKeyboardButton(
+                        "✅ JÁ PAGUEI", callback_data="paid_pix_{plan}")],
+                    [InlineKeyboardButton(
+                        "↩️ VOLTAR", callback_data="plan_{plan}")]
+                ]
+            },
+            'credit_card_payment': {
+                'layout': [
+                    [InlineKeyboardButton(
+                        "🔒 PAGAR AGORA", url="{payment_url}")],
+                    [InlineKeyboardButton(
+                        "↩️ VOLTAR", callback_data="plan_{plan}")]
                 ]
             }
         }
 
-    def get(self, key: str, **kwargs) -> Tuple[str, InlineKeyboardMarkup]:
-        """Retorna mensagem e teclado formatado"""
+    def get(self, key: str, **kwargs) -> InlineKeyboardMarkup:
         if key not in self._buttons:
-            return "", None
+            return None
 
-        button_data = self._buttons[key]
-
-        # Substitui placeholders nos callback_data
         formatted_layout = []
-        for row in button_data['layout']:
+        for row in self._buttons[key]['layout']:
             formatted_row = []
             for button in row:
-                formatted_callback = button.callback_data.format(**kwargs)
-                formatted_row.append(
-                    InlineKeyboardButton(
-                        text=button.text,
-                        callback_data=formatted_callback
-                    )
-                )
+                callback_or_url = button.callback_data or button.url
+                if callback_or_url:
+                    formatted_data = callback_or_url.format(**kwargs)
+
+                    if button.url:
+                        formatted_row.append(
+                            InlineKeyboardButton(
+                                text=button.text,
+                                url=formatted_data
+                            )
+                        )
+                    else:
+                        formatted_row.append(
+                            InlineKeyboardButton(
+                                text=button.text,
+                                callback_data=formatted_data
+                            )
+                        )
+                else:
+                    formatted_row.append(button)
             formatted_layout.append(formatted_row)
 
-        return button_data['message'], InlineKeyboardMarkup(formatted_layout)
+        return InlineKeyboardMarkup(formatted_layout)

@@ -17,7 +17,6 @@ mercado_pago = MercadoPagoService()
 
 
 async def _register_user_if_needed(update: Update) -> UserData:
-    """Centraliza o registro/atualização de usuários"""
     user = update.effective_user
     user_data = await firebase.get_user(user.id)
 
@@ -40,45 +39,14 @@ async def _register_user_if_needed(update: Update) -> UserData:
     return user_data
 
 
+async def handle_generic_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = await _register_user_if_needed(update)
+    await _send_welcome_flow(update, context, user)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await _register_user_if_needed(update)
-    first_name = user['first_name']
-
-    start_messages = messages.get('start', name=first_name)
-
-    # Parte 1: Mensagem de boas-vindas
-    await update.message.reply_text(
-        start_messages['welcome'],
-        parse_mode='Markdown'
-    )
-    await asyncio.sleep(1.5)
-
-    # Parte 2: Video teaser
-    video_url = "https://drive.google.com/uc?id=1ra4nrjVn-etBO7vGCeZfxYSE45omnxWG"
-    await context.bot.send_video(
-        chat_id=update.effective_chat.id,
-        video=video_url,
-        caption=start_messages['teaser'],
-        parse_mode='Markdown'
-    )
-    await asyncio.sleep(2)
-
-    # Parte 3: Mensagem CTA (sem botões)
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=start_messages['cta'],
-        parse_mode='Markdown'
-    )
-    await asyncio.sleep(1)
-
-    # Parte 4: Mensagem de seleção COM botões VIP
-    plans_message, plans_keyboard = buttons.get('vip_plans')
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=plans_message,
-        parse_mode='Markdown',
-        reply_markup=plans_keyboard
-    )
+    await _send_welcome_flow(update, context, user)
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -89,68 +57,101 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def handle_generic_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await _register_user_if_needed(update)
+async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user: dict):
+    """Função compartilhada para o fluxo de boas-vindas"""
+    start_msgs = messages.get('start', name=user['first_name'])
+
+    # 1. Mensagem de boas-vindas
     await update.message.reply_text(
-        messages.get('start', name=user['first_name']),
+        start_msgs['welcome'],
         parse_mode='Markdown'
     )
+    await asyncio.sleep(1.5)
+
+    # 2. Vídeo teaser
+    video_url = "https://drive.google.com/uc?id=1ra4nrjVn-etBO7vGCeZfxYSE45omnxWG"
+    await context.bot.send_video(
+        chat_id=update.effective_chat.id,
+        video=video_url,
+        caption=start_msgs['teaser'],
+        parse_mode='Markdown'
+    )
+    await asyncio.sleep(2)
+
+    # 3. Mensagem CTA
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=start_msgs['cta'],
+        parse_mode='Markdown'
+    )
+    await asyncio.sleep(1)
+
+    # 4. Mostrar planos VIP
+    await _show_vip_plans(update, context)
 
 
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+async def _show_vip_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Mostra os planos VIP com botões"""
+    plans_msg = messages.get('vip_plans')
+    plans_kb = buttons.get('vip_plans')
 
-    data = query.data
-
-    # Handler para seleção de planos
-    if data.startswith('plan_'):
-        plan = data.split('_')[1]
-        plan_name = {
-            '1month': "1 MÊS - R$19.90",
-            '3months': "3 MESES - R$29.90",
-            '6months': "6 MESES - R$49.90",
-            'lifetime': "VITALÍCIO - R$79.90"
-        }.get(plan, "Plano VIP")
-
-        # Mostra opções de pagamento para o plano selecionado
-        payment_msg, payment_kb = buttons.get(
-            'payment_methods',
-            plan=plan
-        )
-
-        await query.edit_message_text(
-            text=f"🎯 *PLANO SELECIONADO:* {plan_name}\n\n{payment_msg}",
+    if update.message:
+        await update.message.reply_text(
+            text=plans_msg,
             parse_mode='Markdown',
-            reply_markup=payment_kb
+            reply_markup=plans_kb
         )
-
-    # Handler para seleção de pagamento
-    elif data.startswith('payment_'):
-        method, plan = data.split('_')[1], data.split('_')[2]
-
-        if method == 'pix':
-            await process_pix_payment(query, plan)
-        elif method == 'cc':
-            await process_credit_card(query, plan)
-
-    # Handler para voltar aos planos
-    elif data == 'back_to_plans':
-        plans_msg, plans_kb = buttons.get('vip_plans')
-        await query.edit_message_text(
+    elif update.callback_query:
+        await update.callback_query.edit_message_text(
             text=plans_msg,
             parse_mode='Markdown',
             reply_markup=plans_kb
         )
 
 
-async def process_pix_payment(query, plan):
-    """Lógica para PIX sem QR Code (apenas código textual)"""
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    # Seleção de plano
+    if data.startswith('plan_'):
+        plan = data.split('_')[1]
+        plan_names = {
+            '1month': "1 MÊS - R$19.90",
+            '3months': "3 MESES - R$29.90",
+            '6months': "6 MESES - R$49.90",
+            'lifetime': "VITALÍCIO - R$79.90"
+        }
+        plan_name = plan_names.get(plan, "Plano VIP")
+
+        await query.edit_message_text(
+            text=messages.get('selected_plan', plan_name=plan_name),
+            parse_mode='Markdown',
+            reply_markup=buttons.get('payment_methods', plan=plan)
+        )
+
+    # Seleção de método de pagamento
+    elif data.startswith('payment_'):
+        method, plan = data.split('_')[1], data.split('_')[2]
+
+        if method == 'pix':
+            await _process_pix_payment(query, plan)
+        elif method == 'cc':
+            await _process_credit_card(query, plan)
+
+    # Voltar aos planos
+    elif data == 'back_to_plans':
+        await _show_vip_plans(update, context)
+
+
+async def _process_pix_payment(query, plan):
+    """Processa pagamento via PIX"""
     plan_prices = {
         '1month': 19.90,
         '3months': 29.90,
         '6months': 49.90,
-        'lifetime': 79.90,
+        'lifetime': 79.90
     }
     amount = plan_prices.get(plan)
 
@@ -162,33 +163,24 @@ async def process_pix_payment(query, plan):
         )
 
         await query.edit_message_text(
-            text=f"🔹 *PAGAMENTO VIA PIX* 🔹\n\n"
-            f"💰 *Valor:* R$ {amount:.2f}\n"
-            f"⏳ *Expira em:* 24 horas\n\n"
-            f"📲 *Código PIX (copie e cole no seu banco):*\n"
-            f"`{pix_data['qr_code']}`\n\n",
+            text=messages.get('pix_payment', amount=amount,
+                              qr_code=pix_data['qr_code']),
             parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    "✅ JÁ PAGUEI", callback_data=f"paid_pix_{plan}")],
-                [InlineKeyboardButton(
-                    "↩️ VOLTAR", callback_data=f"plan_{plan}")]
-            ])
+            reply_markup=buttons.get('pix_confirmation', plan=plan)
         )
-
     except Exception as e:
         await query.edit_message_text(
-            text=f"❌ Erro ao processar PIX: {str(e)}"
+            text=messages.get('pix_error', error=str(e))
         )
 
 
-async def process_credit_card(query, plan):
-    """Lógica atualizada para cartão de crédito via Mercado Pago"""
+async def _process_credit_card(query, plan):
+    """Processa pagamento por cartão"""
     plan_prices = {
         '1month': 19.90,
         '3months': 29.90,
         '6months': 49.90,
-        'lifetime': 79.90,
+        'lifetime': 79.90
     }
     amount = plan_prices.get(plan)
 
@@ -200,19 +192,14 @@ async def process_credit_card(query, plan):
         )
 
         await query.edit_message_text(
-            text=f"🚀 *PAGAMENTO POR CARTÃO* 🚀\n\n"
-            f"Clique no botão abaixo para pagar com segurança:",
+            text=messages.get('credit_card_payment'),
             parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔒 PAGAR AGORA", url=payment_url)],
-                [InlineKeyboardButton(
-                    "↩️ VOLTAR", callback_data=f"plan_{plan}")]
-            ])
+            reply_markup=buttons.get(
+                'credit_card_payment', plan=plan, payment_url=payment_url)
         )
-
     except Exception as e:
         await query.edit_message_text(
-            text=f"❌ Erro ao gerar link: {str(e)}"
+            text=messages.get('cc_error', error=str(e))
         )
 
 
