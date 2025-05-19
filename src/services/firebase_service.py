@@ -2,9 +2,12 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from telegram import User as TelegramUser
 import os
-from typing import Optional
+from typing import Optional, List
 from models.user_model import UserData
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FirebaseService:
@@ -78,39 +81,47 @@ class FirebaseService:
 
         return subscription_data
 
-    async def check_and_update_vip_status(self):
-        print("Verificando assinaturas...")
-        """
-        Verifica todos os usuários VIP e desativa aqueles sem assinaturas ativas.
-        Retorna lista de IDs de usuários desativados.
-        """
+    async def check_and_update_vip_status(self) -> List[str]:
+        logger.info("Iniciando verificação de assinaturas VIP...")
         users_ref = self.db.collection('users')
         subscriptions_ref = self.db.collection('subscriptions')
-
-        # 1. Pega todos os usuários marcados como VIP
-        vip_users = users_ref.where('is_vip', '==', True).stream()
         deactivated_users = []
 
-        for user in vip_users:
+        for user in users_ref.where('is_vip', '==', True).stream():
             user_id = user.id
             user_data = user.to_dict()
-            vip_expires = user_data.get('vip_expires')
 
-            # 2. Verifica se a assinatura está expirada
-            if vip_expires and vip_expires <= datetime.now():
-                # 3. Checa se existe alguma assinatura ATIVA no futuro
-                active_subs = subscriptions_ref.where(
-                    'user_id', '==', user_id
-                ).where(
-                    'expires_at', '>', datetime.now()
-                ).limit(1).stream()
+            if user_data.get('vip_expires') and user_data['vip_expires'] <= datetime.now():
+                active_subs = list(subscriptions_ref
+                                   .where('user_id', '==', user_id)
+                                   .where('expires_at', '>', datetime.now())
+                                   .limit(1)
+                                   .stream())
 
-                # 4. Se NÃO encontrar assinaturas ativas, desativa o VIP
-                if not any(active_subs):
+                if not active_subs:
                     await users_ref.document(user_id).update({
                         'is_vip': False,
                         'vip_expires': None
                     })
                     deactivated_users.append(user_id)
 
+        logger.info(
+            f"Verificação concluída. {len(deactivated_users)} usuários desativados.")
         return deactivated_users
+
+    async def get_expiring_subscriptions(self, days_before: int = 3) -> List[dict]:
+        """Retorna assinaturas que expiram em X dias"""
+        target_date = datetime.now() + timedelta(days=days_before)
+        start_of_day = datetime(
+            target_date.year, target_date.month, target_date.day)
+        end_of_day = start_of_day + timedelta(days=1)
+
+        subscriptions = (
+            self.db.collection('subscriptions')
+            .where('status', '==', 'active')
+            .where('expires_at', '>=', start_of_day)
+            .where('expires_at', '<', end_of_day)
+            .stream()
+        )
+
+        return [sub.to_dict() for sub in subscriptions]

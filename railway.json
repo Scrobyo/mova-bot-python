@@ -1,8 +1,9 @@
 {
     "crons": [
         {
-            "command": "python3 tasks/verify_signatures.py",
-            "schedule": "*/5 * * * *"
+            "name": "Verificar Assinaturas",
+            "schedule": "0 12 * * *",
+            "command": "python -m tasks.verify_signatures"
         }
     ]
 }
