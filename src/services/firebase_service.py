@@ -77,3 +77,39 @@ class FirebaseService:
         sub_ref.set(subscription_data)
 
         return subscription_data
+
+    async def check_and_update_vip_status(self):
+        """
+        Verifica todos os usuários VIP e desativa aqueles sem assinaturas ativas.
+        Retorna lista de IDs de usuários desativados.
+        """
+        users_ref = self.db.collection('users')
+        subscriptions_ref = self.db.collection('subscriptions')
+
+        # 1. Pega todos os usuários marcados como VIP
+        vip_users = users_ref.where('is_vip', '==', True).stream()
+        deactivated_users = []
+
+        for user in vip_users:
+            user_id = user.id
+            user_data = user.to_dict()
+            vip_expires = user_data.get('vip_expires')
+
+            # 2. Verifica se a assinatura está expirada
+            if vip_expires and vip_expires <= datetime.now():
+                # 3. Checa se existe alguma assinatura ATIVA no futuro
+                active_subs = subscriptions_ref.where(
+                    'user_id', '==', user_id
+                ).where(
+                    'expires_at', '>', datetime.now()
+                ).limit(1).stream()
+
+                # 4. Se NÃO encontrar assinaturas ativas, desativa o VIP
+                if not any(active_subs):
+                    await users_ref.document(user_id).update({
+                        'is_vip': False,
+                        'vip_expires': None
+                    })
+                    deactivated_users.append(user_id)
+
+        return deactivated_users
