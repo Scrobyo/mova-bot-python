@@ -2,7 +2,7 @@
     "crons": [
         {
             "name": "Verificar Assinaturas",
-            "schedule": "0 12 * * *",
+            "schedule": "*/2 * * * *",
             "command": "python -m tasks.verify_signatures"
         }
     ]
