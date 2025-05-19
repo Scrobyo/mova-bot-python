@@ -9,11 +9,11 @@ async def check_subscriptions():
     firebase = FirebaseService()
     while True:
         try:
-            logger.info("🔍 Verificando assinaturas VIP...")
+            logger.info("Verificando assinaturas VIP...")
             deactivated_users = await firebase.check_and_update_vip_status()
             if deactivated_users:
-                logger.info(f"➖ Usuários desativados: {deactivated_users}")
+                logger.info(f"Usuários desativados: {deactivated_users}")
         except Exception as e:
-            logger.error(f"❌ Erro: {e}")
+            logger.error(f"Erro: {e}")
 
         await asyncio.sleep(43200)

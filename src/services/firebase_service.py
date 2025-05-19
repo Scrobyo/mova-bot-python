@@ -32,34 +32,34 @@ class FirebaseService:
         self.db = firestore.client()
 
     async def get_user(self, user_id: int) -> Optional[UserData]:
-        logger.debug(f"🔍 Buscando dados do usuário {user_id}...")
+        logger.debug(f"Buscando dados do usuário {user_id}...")
         doc = self.db.collection('users').document(str(user_id)).get()
         if doc.exists:
-            logger.info(f"✅ Usuário {user_id} encontrado.")
+            logger.info(f"Usuário {user_id} encontrado.")
             return doc.to_dict()
         else:
-            logger.warning(f"⚠️ Usuário {user_id} não encontrado.")
+            logger.warning(f"Usuário {user_id} não encontrado.")
             return None
 
     async def register_user(self, user_data: UserData) -> UserData:
-        logger.info(f"📝 Registrando novo usuário: {user_data['id']}")
+        logger.info(f"Registrando novo usuário: {user_data['id']}")
         user_ref = self.db.collection('users').document(user_data['id'])
         user_ref.set(user_data)
-        logger.info(f"✅ Usuário {user_data['id']} registrado com sucesso.")
+        logger.info(f"Usuário {user_data['id']} registrado com sucesso.")
         return user_data
 
     async def update_user_activity(self, user_id: int):
-        logger.debug(f"📌 Atualizando atividade do usuário {user_id}")
+        logger.debug(f"Atualizando atividade do usuário {user_id}")
         self.db.collection('users').document(str(user_id)).update({
             'last_activity': firestore.SERVER_TIMESTAMP
         })
-        logger.debug(f"✅ Última atividade atualizada para o usuário {user_id}")
+        logger.debug(f"Última atividade atualizada para o usuário {user_id}")
 
     async def create_subscription(self, user_id: int, payment_data: dict) -> dict:
         plan = payment_data['plan']
         payment_id = payment_data.get('payment_id', 'manual')
         logger.info(
-            f"💳 Criando assinatura [{plan}] para usuário {user_id} (pagamento ID: {payment_id})")
+            f"Criando assinatura [{plan}] para usuário {user_id} (pagamento ID: {payment_id})")
 
         plan_durations = {
             '1month': timedelta(days=30),
@@ -91,11 +91,11 @@ class FirebaseService:
         sub_ref.set(subscription_data)
 
         logger.info(
-            f"✅ Assinatura criada com sucesso para o usuário {user_id}. Expira em {expires_at.date()}.")
+            f"Assinatura criada com sucesso para o usuário {user_id}. Expira em {expires_at.date()}.")
         return subscription_data
 
     async def check_and_update_vip_status(self) -> List[str]:
-        logger.info("🔍 Iniciando verificação de assinaturas VIP...")
+        logger.info("Iniciando verificação de assinaturas VIP...")
         users_ref = self.db.collection('users')
         subscriptions_ref = self.db.collection('subscriptions')
         deactivated_users = []
@@ -117,7 +117,7 @@ class FirebaseService:
             for sub in expired_subs:
                 sub_data = sub.to_dict()
                 logger.info(
-                    f"🔄 Marcando assinatura {sub.id} como expirada (User: {sub_data.get('user_id')}, Expired at: {sub_data.get('expires_at')})")
+                    f"Marcando assinatura {sub.id} como expirada (User: {sub_data.get('user_id')}, Expired at: {sub_data.get('expires_at')})")
 
                 batch.update(sub.reference, {
                     'status': 'expired',
@@ -129,17 +129,17 @@ class FirebaseService:
                 if batch_count >= 400:
                     batch.commit()
                     logger.info(
-                        f"✅ Lote de {batch_count} assinaturas atualizadas")
+                        f"Lote de {batch_count} assinaturas atualizadas")
                     batch = self.db.batch()
                     batch_count = 0
 
             if batch_count > 0:
                 batch.commit()
                 logger.info(
-                    f"✅ Lote final de {batch_count} assinaturas atualizadas")
+                    f"Lote final de {batch_count} assinaturas atualizadas")
 
             logger.info(
-                f"🔄 Total de assinaturas marcadas como expiradas: {updated_subscriptions}")
+                f"Total de assinaturas marcadas como expiradas: {updated_subscriptions}")
 
             # 2. Verificar usuários VIP
             vip_users_query = users_ref.where(
@@ -154,7 +154,7 @@ class FirebaseService:
 
                 if vip_expires and vip_expires <= now:
                     logger.info(
-                        f"⏳ Verificando usuário VIP expirado: {user_id} (Expirou em: {vip_expires})")
+                        f"Verificando usuário VIP expirado: {user_id} (Expirou em: {vip_expires})")
 
                     active_subs_query = subscriptions_ref.where(
                         filter=FieldFilter('user_id', '==', user_id)
@@ -168,7 +168,7 @@ class FirebaseService:
 
                     if not active_subs:
                         logger.info(
-                            f"🔻 Removendo status VIP do usuário {user_id} (Sem assinaturas ativas)")
+                            f"Removendo status VIP do usuário {user_id} (Sem assinaturas ativas)")
                         users_ref.document(user_id).update({
                             'is_vip': False,
                             'vip_expires': None
@@ -176,15 +176,15 @@ class FirebaseService:
                         deactivated_users.append(user_id)
                     else:
                         logger.info(
-                            f"✅ Usuário {user_id} mantém VIP (Possui assinatura ativa até {active_subs[0].get('expires_at')})")
+                            f"Usuário {user_id} mantém VIP (Possui assinatura ativa até {active_subs[0].get('expires_at')})")
 
         except Exception as e:
             logger.error(
-                f"❌ Erro durante verificação: {str(e)}", exc_info=True)
+                f"Erro durante verificação: {str(e)}", exc_info=True)
             raise
 
         logger.info(
-            f"🏁 Verificação concluída. Usuários desativados: {len(deactivated_users)}")
+            f"Verificação concluída. Usuários desativados: {len(deactivated_users)}")
         return deactivated_users
 
     async def get_expiring_subscriptions(self, days_before: int = 3) -> List[dict]:
@@ -194,7 +194,7 @@ class FirebaseService:
         end_of_day = start_of_day + timedelta(days=1)
 
         logger.info(
-            f"📆 Buscando assinaturas que expiram entre {start_of_day} e {end_of_day}...")
+            f"Buscando assinaturas que expiram entre {start_of_day} e {end_of_day}...")
 
         subscriptions = (
             self.db.collection('subscriptions')  # Corrigido o nome da coleção
@@ -206,5 +206,5 @@ class FirebaseService:
 
         subs_list = [sub.to_dict() for sub in subscriptions]
         logger.info(
-            f"🔎 {len(subs_list)} assinaturas encontradas para expirar em {days_before} dias.")
+            f"{len(subs_list)} assinaturas encontradas para expirar em {days_before} dias.")
         return subs_list

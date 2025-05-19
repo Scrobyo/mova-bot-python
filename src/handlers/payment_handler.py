@@ -22,7 +22,7 @@ mercado_pago = MercadoPagoService()
 async def show_vip_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Mostra os planos VIP com botões"""
     logger.info(
-        f"💎 Enviando planos VIP para o usuário {update.effective_user.id}")
+        f"Enviando planos VIP para o usuário {update.effective_user.id}")
     plans_msg = messages.get('vip_plans')
     plans_kb = buttons.get('vip_plans')
 
@@ -32,14 +32,14 @@ async def show_vip_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown',
             reply_markup=plans_kb
         )
-        logger.info("📋 Planos VIP enviados via mensagem.")
+        logger.info("Planos VIP enviados via mensagem.")
     elif update.callback_query:
         await update.callback_query.edit_message_text(
             text=plans_msg,
             parse_mode='Markdown',
             reply_markup=plans_kb
         )
-        logger.info("📋 Planos VIP enviados via callback query.")
+        logger.info("Planos VIP enviados via callback query.")
 
 
 async def handle_payment_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -59,7 +59,7 @@ async def handle_payment_selection(update: Update, context: ContextTypes.DEFAULT
         }
         plan_name = plan_names.get(plan, "Plano VIP")
         logger.info(
-            f"🔄 Usuário {query.from_user.id} selecionou o plano: {plan_name}")
+            f"Usuário {query.from_user.id} selecionou o plano: {plan_name}")
 
         await query.edit_message_text(
             text=messages.get('selected_plan', plan_name=plan_name),
@@ -72,7 +72,7 @@ async def handle_payment_selection(update: Update, context: ContextTypes.DEFAULT
     elif data.startswith('payment_'):
         method, plan = data.split('_')[1], data.split('_')[2]
         logger.info(
-            f"💳 Usuário {query.from_user.id} selecionou o método: {method} para o plano {plan}")
+            f"Usuário {query.from_user.id} selecionou o método: {method} para o plano {plan}")
 
         if method == 'pix':
             await process_pix_payment(query, context, plan)
@@ -96,7 +96,7 @@ async def process_pix_payment(query, context: ContextTypes.DEFAULT_TYPE, plan: s
 
     try:
         logger.info(
-            f"💳 Processando pagamento PIX para o usuário {query.from_user.id} no plano {plan}.")
+            f"Processando pagamento PIX para o usuário {query.from_user.id} no plano {plan}.")
 
         pix_data = await mercado_pago.create_pix_payment(
             user_id=query.from_user.id,
@@ -106,7 +106,7 @@ async def process_pix_payment(query, context: ContextTypes.DEFAULT_TYPE, plan: s
 
         context.user_data["pix_payment_id"] = pix_data["payment_id"]
         logger.info(
-            f"✅ Pagamento PIX gerado com sucesso para o usuário {query.from_user.id}. ID: {pix_data['payment_id']}")
+            f"Pagamento PIX gerado com sucesso para o usuário {query.from_user.id}. ID: {pix_data['payment_id']}")
 
         await query.edit_message_text(
             text=messages.get('pix_payment', amount=amount,
@@ -117,7 +117,7 @@ async def process_pix_payment(query, context: ContextTypes.DEFAULT_TYPE, plan: s
 
     except Exception as e:
         logger.error(
-            f"🚨 Erro ao gerar pagamento PIX para o usuário {query.from_user.id}. Erro: {str(e)}")
+            f"Erro ao gerar pagamento PIX para o usuário {query.from_user.id}. Erro: {str(e)}")
         await query.edit_message_text(text=messages.get('pix_error', error=str(e)))
 
 
@@ -133,7 +133,7 @@ async def process_credit_card_payment(query, plan: str):
 
     try:
         logger.info(
-            f"💳 Iniciando pagamento por cartão de crédito para o usuário {query.from_user.id}, plano: {plan}.")
+            f"Iniciando pagamento por cartão de crédito para o usuário {query.from_user.id}, plano: {plan}.")
 
         payment_url = await mercado_pago.create_credit_card_payment_link(
             user_id=query.from_user.id,
@@ -150,7 +150,7 @@ async def process_credit_card_payment(query, plan: str):
 
     except Exception as e:
         logger.error(
-            f"🚨 Erro ao gerar link de pagamento por cartão de crédito para o usuário {query.from_user.id}. Erro: {str(e)}")
+            f"Erro ao gerar link de pagamento por cartão de crédito para o usuário {query.from_user.id}. Erro: {str(e)}")
         await query.edit_message_text(text=messages.get('cc_error', error=str(e)))
 
 
@@ -175,13 +175,13 @@ async def handle_pix_confirmation(update: Update, context: ContextTypes.DEFAULT_
     payment_id = context.user_data.get("pix_payment_id")
     if not payment_id:
         logger.error(
-            f"❌ Pagamento PIX não encontrado para o usuário {user_id}.")
-        await query.edit_message_text("❌ O pagamento PIX não foi encontrado. Por favor, tente novamente.")
+            f"Pagamento PIX não encontrado para o usuário {user_id}.")
+        await query.edit_message_text("O pagamento PIX não foi encontrado. Por favor, tente novamente.")
         return True, None
 
     # Verificação REAL do pagamento
     logger.info(
-        f"🔎 Iniciando a verificação do pagamento PIX para o usuário {user_id}.")
+        f"Iniciando a verificação do pagamento PIX para o usuário {user_id}.")
     payment_verified, response, vip_buttons = await confirm_payment(
         user_id=user_id,
         plan=plan,
@@ -196,7 +196,7 @@ async def handle_pix_confirmation(update: Update, context: ContextTypes.DEFAULT_
     )
 
     if payment_verified:
-        logger.info(f"✅ Pagamento PIX aprovado para o usuário {user_id}.")
+        logger.info(f"Pagamento PIX aprovado para o usuário {user_id}.")
         await query.edit_message_text(
             text=response,
             parse_mode='Markdown',
@@ -204,7 +204,7 @@ async def handle_pix_confirmation(update: Update, context: ContextTypes.DEFAULT_
         )
     else:
         logger.warning(
-            f"⚠️ Pagamento PIX para o usuário {user_id} falhou ou está pendente.")
+            f"Pagamento PIX para o usuário {user_id} falhou ou está pendente.")
         vip_keyboard = buttons.get('pix_confirmation_error', plan=plan)
         await query.edit_message_text(
             text=response,
@@ -219,10 +219,10 @@ async def confirm_payment(user_id: int, plan: str, payment_id: str, payment_meth
     """Confirma o pagamento e ativa a assinatura"""
     try:
         logger.info(
-            f"🔎 Verificando pagamento {payment_id} para o usuário {user_id}...")
+            f"Verificando pagamento {payment_id} para o usuário {user_id}...")
 
         payment_status = await mercado_pago.verify_payment(payment_id)
-        logger.info(f"📜 Status do pagamento {payment_id}: {payment_status}")
+        logger.info(f"Status do pagamento {payment_id}: {payment_status}")
 
         if payment_status != "approved":
             if payment_status == "pending":
@@ -231,7 +231,7 @@ async def confirm_payment(user_id: int, plan: str, payment_id: str, payment_meth
                 return False, messages.get('payment_failed'), None
 
         logger.info(
-            f"🎉 Pagamento aprovado para o usuário {user_id}. Criando assinatura...")
+            f"Pagamento aprovado para o usuário {user_id}. Criando assinatura...")
         subscription = await firebase.create_subscription(
             user_id=user_id,
             payment_data={
@@ -268,5 +268,5 @@ async def confirm_payment(user_id: int, plan: str, payment_id: str, payment_meth
 
     except Exception as e:
         logger.error(
-            f"🚨 Erro ao confirmar pagamento {payment_id} para o usuário {user_id}. Erro: {str(e)}")
+            f"Erro ao confirmar pagamento {payment_id} para o usuário {user_id}. Erro: {str(e)}")
         return False, messages.get('payment_failed'), None

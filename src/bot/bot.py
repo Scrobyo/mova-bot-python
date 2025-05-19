@@ -22,7 +22,7 @@ def run_bot():
     try:
         loop.create_task(check_subscriptions())
 
-        logger.info("🤖 Bot iniciado com sucesso!")
+        logger.info("Bot iniciado com sucesso!")
         app.run_polling()
     finally:
         loop.close()

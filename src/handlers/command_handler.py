@@ -26,13 +26,13 @@ firebase = FirebaseService()
 async def _register_user_if_needed(update: Update) -> UserData:
     user = update.effective_user
     logger.info(
-        f"💻 Iniciando registro do usuário {user.id} - {user.first_name} {user.last_name or ''}.")
+        f"Iniciando registro do usuário {user.id} - {user.first_name} {user.last_name or ''}.")
 
     user_data = await firebase.get_user(user.id)
 
     if not user_data:
         logger.info(
-            f"🚨 Usuário {user.id} não encontrado. Criando novo usuário no Firebase.")
+            f"Usuário {user.id} não encontrado. Criando novo usuário no Firebase.")
         new_user: UserData = {
             'id': str(user.id),
             'first_name': user.first_name,
@@ -46,30 +46,30 @@ async def _register_user_if_needed(update: Update) -> UserData:
             'vip_expires': None
         }
         registered_user = await firebase.register_user(new_user)
-        logger.info(f"✅ Usuário {user.id} registrado com sucesso.")
+        logger.info(f"Usuário {user.id} registrado com sucesso.")
         return registered_user
 
     logger.info(
-        f"✅ Usuário {user.id} encontrado, atualizando última atividade.")
+        f"Usuário {user.id} encontrado, atualizando última atividade.")
     await firebase.update_user_activity(user.id)
     return user_data
 
 
 async def handle_generic_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"📩 Mensagem recebida de {update.effective_user.id}")
+    logger.info(f"Mensagem recebida de {update.effective_user.id}")
     user = await _register_user_if_needed(update)
     await _send_welcome_flow(update, context, user)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(
-        f"🔑 Iniciando fluxo de boas-vindas para o usuário {update.effective_user.id}")
+        f"Iniciando fluxo de boas-vindas para o usuário {update.effective_user.id}")
     user = await _register_user_if_needed(update)
     await _send_welcome_flow(update, context, user)
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"❓ Usuário {update.effective_user.id} solicitou ajuda.")
+    logger.info(f"Usuário {update.effective_user.id} solicitou ajuda.")
     await _register_user_if_needed(update)
     await update.message.reply_text(
         messages.get('help'),
@@ -80,7 +80,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user: dict):
     """Função compartilhada para o fluxo de boas-vindas"""
     logger.info(
-        f"🌱 Enviando fluxo de boas-vindas para o usuário {user['id']} - {user['first_name']}")
+        f"Enviando fluxo de boas-vindas para o usuário {user['id']} - {user['first_name']}")
 
     start_msgs = messages.get('start', name=user['first_name'])
 
@@ -90,7 +90,7 @@ async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE,
         welcome_msg,
         parse_mode='Markdown'
     )
-    logger.info(f"📝 Mensagem de boas-vindas enviada para {user['first_name']}")
+    logger.info(f"Mensagem de boas-vindas enviada para {user['first_name']}")
 
     await asyncio.sleep(1.5)
 
@@ -102,7 +102,7 @@ async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE,
         caption=start_msgs['teaser'],
         parse_mode='Markdown'
     )
-    logger.info("📹 Teaser enviado para o usuário.")
+    logger.info("Teaser enviado para o usuário.")
     await asyncio.sleep(2)
 
     # 3. Mensagem CTA
@@ -111,7 +111,7 @@ async def _send_welcome_flow(update: Update, context: ContextTypes.DEFAULT_TYPE,
         text=start_msgs['cta'],
         parse_mode='Markdown'
     )
-    logger.info("📢 Mensagem de call-to-action enviada.")
+    logger.info("Mensagem de call-to-action enviada.")
     await asyncio.sleep(1)
 
     # 4. Mostrar planos VIP (usando a função do payment_handler)
@@ -135,7 +135,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Voltar aos planos
     if data == 'back_to_plans':
-        logger.info(f"↩️ Usuário {query.from_user.id} voltou aos planos VIP.")
+        logger.info(f"↩Usuário {query.from_user.id} voltou aos planos VIP.")
         await show_vip_plans(update, context)
 
 
@@ -160,4 +160,4 @@ def setup_handlers(app):
             messages.get('unknown_command'))
     ))
 
-    logger.info("🔧 Handlers configurados corretamente.")
+    logger.info("Handlers configurados corretamente.")
