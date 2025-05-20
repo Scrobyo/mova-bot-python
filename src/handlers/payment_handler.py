@@ -87,7 +87,7 @@ async def handle_payment_selection(update: Update, context: ContextTypes.DEFAULT
 async def process_pix_payment(query, context: ContextTypes.DEFAULT_TYPE, plan: str):
     """Processa pagamento via PIX"""
     plan_prices = {
-        '1month': 19.90,
+        '1month': 1.0,
         '3months': 29.90,
         '6months': 49.90,
         'lifetime': 79.90
@@ -124,7 +124,7 @@ async def process_pix_payment(query, context: ContextTypes.DEFAULT_TYPE, plan: s
 async def process_credit_card_payment(query, plan: str):
     """Processa pagamento por cartão"""
     plan_prices = {
-        '1month': 19.90,
+        '1month': 1.0,
         '3months': 29.90,
         '6months': 49.90,
         'lifetime': 79.90
@@ -188,7 +188,7 @@ async def handle_pix_confirmation(update: Update, context: ContextTypes.DEFAULT_
         payment_id=payment_id,
         payment_method='pix',
         amount={
-            '1month': 19.90,
+            '1month': 1.0,
             '3months': 29.90,
             '6months': 49.90,
             'lifetime': 79.90
