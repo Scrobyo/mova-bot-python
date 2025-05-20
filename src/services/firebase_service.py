@@ -1,8 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import FieldFilter
-from google.cloud.firestore_v1 import FieldFilter
-from telegram import User as TelegramUser
 import os
 from typing import Optional, List
 from models.user_model import UserData
@@ -208,3 +206,42 @@ class FirebaseService:
         logger.info(
             f"{len(subs_list)} assinaturas encontradas para expirar em {days_before} dias.")
         return subs_list
+
+    async def check_user_permission(self, user_id: str) -> bool:
+        """Verifica se o usuário tem permissão para entrar no grupo"""
+        try:
+            user_ref = self.db.collection('users').document(str(user_id))
+            user_doc = user_ref.get()  # Removido o await pois é síncrono
+
+            if not user_doc.exists:
+                logger.debug(f"Usuário {user_id} não encontrado")
+                return False
+
+            user_data = user_doc.to_dict()
+            logger.debug(f"Dados do usuário {user_id}: {user_data}")
+
+            # Verifica se o usuário tem VIP ativo
+            is_vip = user_data.get('is_vip', False)
+
+            # Verifica a validade do VIP (usando vip_expires que é o campo correto)
+            if is_vip and 'vip_expires' in user_data:
+                from datetime import datetime
+                vip_expiry = user_data['vip_expires']
+
+                # Converte para datetime se for um objeto timestamp
+                if hasattr(vip_expiry, 'replace'):
+                    expiry_date = vip_expiry.replace(tzinfo=None)
+                else:
+                    expiry_date = vip_expiry
+
+                if datetime.now() > expiry_date:
+                    logger.debug(
+                        f"VIP do usuário {user_id} expirado em {expiry_date}")
+                    return False
+
+            return is_vip
+
+        except Exception as e:
+            logger.error(
+                f"Erro ao verificar permissão: {str(e)}", exc_info=True)
+            return False
