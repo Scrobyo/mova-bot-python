@@ -61,7 +61,7 @@ class ButtonModel:
             'vip_success': {
                 'layout': [
                     [InlineKeyboardButton("👉 ACESSAR GRUPO VIP",
-                                          url="https://t.me/")],
+                                          url="https://t.me/+Qy9pq5tu-Yw1Njgx")],
                     [InlineKeyboardButton(
                         "🛠 SUPORTE", url="https://t.me/@Scrobyo")]
                 ]
