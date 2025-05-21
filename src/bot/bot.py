@@ -10,6 +10,8 @@ from utils.logger import setup_logger
 logger = setup_logger("bot")
 
 
+# main.py
+
 def run_bot():
     token = os.getenv("TELEGRAM_TOKEN")
     if not token:
@@ -19,14 +21,14 @@ def run_bot():
 
     # Configura comandos e handlers
     setup_handlers(app)
-    setup_join_request_handler(app)  # Corrigido aqui também
+    setup_join_request_handler(app)
 
-    # Inicia tarefas assíncronas (como checagem de VIPs ou assinaturas)
+    # Inicia tarefas assíncronas
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     try:
-        loop.create_task(check_subscriptions())
+        loop.create_task(check_subscriptions(app.bot))  # Passe o bot aqui
         logger.info("Bot iniciado com sucesso!")
         app.run_polling()
     finally:
