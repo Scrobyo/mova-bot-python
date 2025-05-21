@@ -7,7 +7,7 @@ from models.user_model import UserData
 from datetime import datetime, timedelta, timezone
 from utils.logger import setup_logger
 
-logger = setup_logger("firebase_service")
+logger = setup_logger(__name__)
 
 
 class FirebaseService:

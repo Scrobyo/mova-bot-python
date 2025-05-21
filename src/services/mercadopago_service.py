@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 from utils.logger import setup_logger
 
-logger = setup_logger("mercadopago_service")
+logger = setup_logger(__name__)
 
 
 class MercadoPagoService:

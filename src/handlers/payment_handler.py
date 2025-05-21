@@ -11,7 +11,7 @@ from services.firebase_service import FirebaseService
 from services.mercadopago_service import MercadoPagoService
 from utils.logger import setup_logger
 
-logger = setup_logger("payment-handler")
+logger = setup_logger(__name__)
 
 messages = MessageModel()
 buttons = ButtonModel()

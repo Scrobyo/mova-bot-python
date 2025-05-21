@@ -8,7 +8,7 @@ from models.message_model import MessageModel
 from services.firebase_service import FirebaseService
 from utils.logger import setup_logger
 
-logger = setup_logger("subscription-handler")
+logger = setup_logger(__name__)
 
 messages = MessageModel()
 firebase = FirebaseService()

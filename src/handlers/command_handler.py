@@ -17,7 +17,7 @@ from handlers.payment_handler import (
 )
 
 # Log setup
-logger = setup_logger("command-handler")
+logger = setup_logger(__name__)
 
 messages = MessageModel()
 firebase = FirebaseService()
